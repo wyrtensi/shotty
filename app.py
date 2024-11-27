@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import platform
 from PyQt5.QtWidgets import QApplication, QMenu, QAction, QSystemTrayIcon
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QObject, pyqtSignal, QDateTime
@@ -7,6 +8,12 @@ from shotty_gui import ShottyFullscreen, ShottyAboutWindow
 from utils import showNotification, screenshot, getDateTime
 
 import os; os.chdir(os.path.dirname(sys.argv[0]))
+
+_platform = platform.system()
+
+if _platform == 'Windows':
+    import pythoncom as pc
+    from pyWinhook import HookManager
 
 def main(): 
 

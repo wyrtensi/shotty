@@ -27,8 +27,8 @@ def mask_image(imgdata, imgtype='jpg', size=64):
     # Crop image to a square:
     imgsize = min(image.width(), image.height())
     rect = QRect(
-        (image.width() - imgsize) / 2,
-        (image.height() - imgsize) / 2,
+        int((image.width() - imgsize) / 2),
+        int((image.height() - imgsize) / 2),
         imgsize,
         imgsize,
     )
@@ -95,12 +95,12 @@ def showNotification(title, msg):
         icon = 'icons/shotty.png'
 
     try:
-        Notification(
+        from plyer import notification
+        notification.notify(
             title=title,
-            description=msg,
-            icon_path=icon, # On Windows .ico is required, on Linux - .png
-            duration=5,                              # Duration in seconds
-            urgency=Notification.URGENCY_CRITICAL
-        ).send()
+            message=msg,
+            app_icon=icon,    # На Windows требуется .ico, на Linux - .png
+            timeout=5         # Длительность в секундах
+        )
     except Exception as e:
-        print(e)
+        print(f"Notification error: {e}")

@@ -13,7 +13,7 @@ from about import ShottyAboutWindow
 import os; os.chdir(os.path.dirname(sys.argv[0]))
 
 ZOOM_DIAMETER           = 160
-ZOOM_RADIUS             = ZOOM_DIAMETER/2
+ZOOM_RADIUS             = ZOOM_DIAMETER // 2
 CROSSHAIR_GAP           = 15
 ZOOM_Y_OFFSET           = 35
 ZOOM_X_OFFSET           = 20
@@ -29,7 +29,8 @@ if _platform == 'Linux':
     from Xlib import X
 elif _platform == 'Windows':
     import pythoncom as pc
-    from pyHook import HookManager
+    import pyWinhook
+    from pyWinhook import HookManager
 elif _platform == 'Darwin':
     print('[ERROR] macOS not supported!')
 else:
@@ -222,12 +223,19 @@ class ShottyFullscreen(QWidget):
         painter = QPainter()
         painter.begin(qPixZoom)
         painter.setPen(QPen(Qt.green, 4, Qt.DotLine))
-        # Horizontal line
-        painter.drawLine(0, ZOOM_RADIUS, ZOOM_RADIUS - CROSSHAIR_GAP, ZOOM_RADIUS)
-        painter.drawLine(ZOOM_RADIUS + CROSSHAIR_GAP, ZOOM_RADIUS, ZOOM_DIAMETER, ZOOM_RADIUS)
-        # Vertical line
-        painter.drawLine(ZOOM_RADIUS, 0, ZOOM_RADIUS, ZOOM_RADIUS - CROSSHAIR_GAP)
-        painter.drawLine(ZOOM_RADIUS, ZOOM_RADIUS + CROSSHAIR_GAP, ZOOM_RADIUS, ZOOM_DIAMETER)
+        
+        painter.drawLine(QPoint(0, ZOOM_RADIUS), 
+                        QPoint(ZOOM_RADIUS - CROSSHAIR_GAP, ZOOM_RADIUS))
+        
+        painter.drawLine(QPoint(ZOOM_RADIUS + CROSSHAIR_GAP, ZOOM_RADIUS),
+                        QPoint(ZOOM_DIAMETER, ZOOM_RADIUS))
+        
+        painter.drawLine(QPoint(ZOOM_RADIUS, 0),
+                        QPoint(ZOOM_RADIUS, ZOOM_RADIUS - CROSSHAIR_GAP))
+        
+        painter.drawLine(QPoint(ZOOM_RADIUS, ZOOM_RADIUS + CROSSHAIR_GAP),
+                        QPoint(ZOOM_RADIUS, ZOOM_DIAMETER))
+        
         painter.end()
         self.l_mousePos.setPixmap(qPixZoom)
         self.l_mousePos.resize(ZOOM_DIAMETER, ZOOM_DIAMETER)
@@ -298,13 +306,25 @@ class ShottyFullscreen(QWidget):
     def copyToClipboard(self, x1, y1, x2, y2):
         if x1 == -1:
             h, w, _ = self.im.shape
-            qScreen = QImage(self.im.copy(), w, h,
-                             QImage.Format_RGB888).rgbSwapped()
+            qScreen = QImage(self.im.copy(), w, h, QImage.Format_RGB888).rgbSwapped()
         else:
-            crop_im = self.im[y1:y2, x1:x2, :].copy()
+            # Убедимся, что координаты в правильном порядке
+            x_start = min(x1, x2)
+            x_end = max(x1, x2)
+            y_start = min(y1, y2)
+            y_end = max(y1, y2)
+            
+            # Вырезаем нужную область
+            crop_im = self.im[y_start:y_end, x_start:x_end, :].copy()
             h, w, _ = crop_im.shape
             qScreen = QImage(crop_im, w, h, QImage.Format_RGB888).rgbSwapped()
-        QApplication.clipboard().setImage(qScreen)
+        
+        # Копируем в буфер обмена
+        clipboard = QApplication.clipboard()
+        clipboard.setImage(qScreen)
+        
+        # Добавляем уведомление
+        showNotification('Shotty', 'Region copied to clipboard')
 
     def showCroppedMenu(self, e):
         menu = QMenu()
@@ -334,7 +354,7 @@ class ShottyFullscreen(QWidget):
                 self.closeToBackground()
         elif action == clipboard_crop_action:
             self.copyToClipboard(self.rect_x1, self.rect_y1, e.x(), e.y())
-            self.closeToBackground()
+            self.closeToBackground()  # Закрываем окно только после копирования
         elif action == cancel_action:
             return
         elif action == exit_action:
